@@ -180,23 +180,6 @@
   </div>
 </div>
 
-{#if deviceStatus}
-  <div class="w-8/12 p-4 mx-auto mt-4 text-sm border rounded-lg shadow-sm bg-base-100 border-base-300">
-    <div class="flex items-center justify-between">
-      <p class="font-semibold">Enhetsstatus</p>
-      <span class="badge {deviceStatus.online ? 'badge-success' : 'badge-error'}">{deviceStatus.online ? 'Online' : 'Offline'}</span>
-    </div>
-    <div class="mt-2 space-y-1 text-gray-600">
-      <p>Uptime: {formatUptime(deviceStatus.uptime)}</p>
-      <p>Heap: {deviceStatus.freeHeap ?? '–'} bytes</p>
-      <p>Min heap: {deviceStatus.minHeap ?? '–'} bytes</p>
-      <p>Fragmentering: {deviceStatus.frag ?? '–'}%</p>
-      <p>Signal: {deviceStatus.rssi ?? '–'} dBm</p>
-      <p>Senast sedd: {formatTimestamp(deviceStatus.lastSeen ?? deviceStatus.ts)}</p>
-    </div>
-  </div>
-{/if}
-
 <div class="w-8/12 mt-3">
   <button on:click={sendToHeatpump} class="w-full h-16 mt-3 mb-8 rounded btn btn-primary">
     OK! <br>Skicka till värmepumpen
@@ -228,6 +211,23 @@
         <p class="font-bold text-green-500">Datan är skickad till värmepumpen!</p>
         <button on:click={() => {success = false}} class="w-full mt-8 rounded btn btn-primary">Ok</button>
       </div>
+    </div>
+  </div>
+{/if}
+
+{#if deviceStatus}
+  <div class="w-8/12 p-4 mx-auto mt-4 text-sm border rounded-lg shadow-sm bg-base-100 border-base-300">
+    <div class="flex items-center justify-between">
+      <p class="font-semibold">Enhetsstatus</p>
+      <span class="badge {deviceStatus.online ? 'badge-success' : 'badge-error'}">{deviceStatus.online ? 'Online' : 'Offline'}</span>
+    </div>
+    <div class="mt-2 space-y-1 text-gray-600">
+      <p>Uptime: {formatUptime(deviceStatus.uptime)}</p>
+      <p>Heap: {deviceStatus.freeHeap ?? '–'} bytes</p>
+      <p>Min heap: {deviceStatus.minHeap ?? '–'} bytes</p>
+      <p>Fragmentering: {deviceStatus.frag ?? '–'}%</p>
+      <p>Signal: {deviceStatus.rssi ?? '–'} dBm</p>
+      <p>Senast sedd: {formatTimestamp(deviceStatus.lastSeen ?? deviceStatus.ts)}</p>
     </div>
   </div>
 {/if}
