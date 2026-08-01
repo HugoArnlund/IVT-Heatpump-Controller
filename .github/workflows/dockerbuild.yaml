@@ -16,18 +16,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.x'
-
-    - name: Install PlatformIO
-      run: python -m pip install platformio
-
-    - name: Build NodeMCU firmware
-      working-directory: ./NodeMCU
-      run: platformio run
-
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
