@@ -45,53 +45,159 @@ export const login = (loginError, userInfo) => {
 
 const db = getDatabase(app);
 
+const getStoredLogin = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const stored = localStorage.getItem("IVT-loginInfo");
+    return stored ? JSON.parse(stored) : null;
+  } catch (error) {
+    console.error("Failed to read stored Firebase login:", error);
+    return null;
+  }
+};
+
+export const ensureAuthenticated = async () => {
+  if (auth.currentUser) {
+    return auth.currentUser;
+  }
+
+  const login = getStoredLogin();
+  if (login?.email && login?.password) {
+    const userCredential = await signInWithEmailAndPassword(auth, login.email, login.password);
+    return userCredential.user;
+  }
+
+  throw new Error("No login info saved to localstorage");
+};
+
 export const writeHeatpumpData = async (data) => {
   try {
     if (!data) {
       throw new Error('No data provided to writeHeatpumpData');
     }
 
-    if(isNaN(data.temp)) data.temp = "20";
-    
+    await ensureAuthenticated();
+
+    if (isNaN(data.temp)) data.temp = "20";
+
     await set(ref(db, '/heatpump/data'), data);
     console.log('Heatpump data successfully written');
-    return true; // Indicate success
+    return true;
   } catch (error) {
     console.error('Error writing heatpump data:', error.message);
-    return false; // Indicate failure
+    return false;
   }
 };
 
+const normalizeResponsePayload = (payload) => {
+  if (payload == null) {
+    return null;
+  }
+
+  if (typeof payload === "string") {
+    return { status: "unknown", message: payload, id: null, raw: payload };
+  }
+
+  if (typeof payload === "object") {
+    return {
+      ...payload,
+      status: payload.status || "unknown",
+      message: payload.message || "",
+      error: payload.error || null,
+      id: payload.id ?? payload.commandId ?? payload.command_id ?? null,
+    };
+  }
+
+  return { status: "unknown", message: String(payload), id: null, raw: payload };
+};
+
 export const listenForResponse = (cb) => {
-  const responseRef = ref(db, `/response`);
+  let unsubscribe = null;
+  let active = true;
 
-  const unsubscribe = onValue(responseRef, (snapshot) => {
-    if (snapshot.exists()) {
-      cb(snapshot.val());
-    } else {
-      cb("No data available");
+  const attachListener = async () => {
+    try {
+      await ensureAuthenticated();
+      if (!active) return;
+
+      const responseRef = ref(db, `/response`);
+      unsubscribe = onValue(responseRef, (snapshot) => {
+        if (!active) return;
+        if (snapshot.exists()) {
+          cb(normalizeResponsePayload(snapshot.val()));
+        } else {
+          cb(null);
+        }
+      }, (error) => {
+        console.error(error);
+        cb(null, error.message);
+      });
+    } catch (error) {
+      console.error("Unable to subscribe to response updates:", error.message);
+      cb(null, error.message);
     }
-  }, (error) => {
-    console.error(error);
-  });
+  };
 
-  // Return an unsubscribe function so the caller can stop listening
-  return unsubscribe;
+  attachListener();
+
+  return () => {
+    active = false;
+    if (unsubscribe) {
+      unsubscribe();
+    }
+  };
 };
 
 export const listenForDeviceStatus = (callback) => {
-  const statusRef = ref(db, "/status/heartbeat");
+  let unsubscribe = null;
+  let active = true;
 
-  return onValue(statusRef, (snapshot) => {
-    if (snapshot.exists()) {
-      callback(snapshot.val());
-    } else {
+  const attachListener = async () => {
+    try {
+      await ensureAuthenticated();
+      if (!active) return;
+
+      const statusRef = ref(db, "/status/heartbeat");
+      unsubscribe = onValue(statusRef, (snapshot) => {
+        if (!active) return;
+        if (!snapshot.exists()) {
+          callback(null);
+          return;
+        }
+
+        const value = snapshot.val();
+        if (typeof value === "string") {
+          try {
+            callback(JSON.parse(value));
+          } catch (error) {
+            console.error("Failed to parse device status payload:", error);
+            callback(null);
+          }
+          return;
+        }
+
+        callback(value);
+      }, (error) => {
+        console.error("Device status error:", error);
+        callback(null);
+      });
+    } catch (error) {
+      console.error("Unable to subscribe to device status:", error.message);
       callback(null);
     }
-  }, (error) => {
-    console.error("Device status error:", error);
-    callback(null);
-  });
+  };
+
+  attachListener();
+
+  return () => {
+    active = false;
+    if (unsubscribe) {
+      unsubscribe();
+    }
+  };
 };
 
 // Lyssna på temperaturdata

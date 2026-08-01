@@ -10,6 +10,7 @@
   let loading = false; // Loading state for UI
   let error = ''; // Error message to show
   let success = false; // Success state for UI
+  let statusMessage = ''; // Progress message for the current command
   let deviceStatus = null;
   let unsubscribeDeviceStatus;
 
@@ -64,48 +65,65 @@
       loading = true;
       error = ''; // Clear previous errors
       success = false; // Reset success state
+      statusMessage = 'Skickar kommandot till värmepumpen...';
 
       console.debug("Sending data to heatpump:", data);
-      writeHeatpumpData(data);
+      const wrote = await writeHeatpumpData(data);
+      if (!wrote) {
+        throw new Error("Firebase write failed");
+      }
 
       let timeout;
 
       console.info("Waiting for confirmation from heatpump...");
-      let callback = (data, error) => {
-        if (data == data.id) {
-          clearTimeout(timeout);
-          console.info("Received correct response from heatpump!");
-          loading = false; // Hide loading spinner
-          success = true; // Show success state
-        }
-      };
-
-      const stopListening = listenForResponse((d, err) => {
-        if (d) {
-          console.log("Received data:", d);
-
-          if (d == data.id) {
-            console.info("Received correct response from heatpump!");
-            
-            loading = false; // Hide loading spinner
-            success = true; // Show success state
-
-            clearTimeout(timeout);
-            stopListening(); // Stop listening
-          }
-        } else if (err) {
+      const stopListening = listenForResponse((response, err) => {
+        if (err) {
           console.warn("Error or no data:", err);
           loading = false;
-          error = err; // Show error message
+          error = err;
+          statusMessage = 'Kunde inte läsa bekräftelsen från värmepumpen.';
+          return;
+        }
+
+        if (!response) {
+          return;
+        }
+
+        if (response.id != null && response.id !== data.id) {
+          return;
+        }
+
+        if (response.status === 'received') {
+          statusMessage = response.message || 'Kommandot mottogs av styrenheten.';
+          return;
+        }
+
+        if (response.status === 'executed') {
+          console.info("Received successful execution response from heatpump!");
+          loading = false;
+          success = true;
+          statusMessage = response.message || 'Kommandot utfördes framgångsrikt.';
+          clearTimeout(timeout);
+          stopListening();
+          return;
+        }
+
+        if (response.status === 'failed') {
+          console.warn("Heat pump reported a failed execution:", response.error || response.message);
+          loading = false;
+          error = response.error || response.message || 'Kommandot kunde inte utföras.';
+          statusMessage = 'Kommandot avvisades eller misslyckades.';
+          clearTimeout(timeout);
+          stopListening();
         }
       });
 
       timeout = setTimeout(() => {
         console.error("Timeout: No response from heatpump.");
         loading = false;
-        error = 'Timeout: No response from heatpump'; // Show error message
+        error = 'Tidsgräns: Inget svar från värmepumpen.';
+        statusMessage = 'Ingen bekräftelse mottogs inom tidsgränsen.';
         stopListening();
-
       }, 60 * 1000);
     } catch (err) {
       console.error("Error while sending data to heatpump:", err);
@@ -195,9 +213,9 @@
       <div class="text-center">
         {#if error}
           <p class="mt-4 text-red-500">{error}</p>
-          <button on:click={() => {loading = false, error = ''}} class="w-full mt-8 rounded btn btn-primary">Ok</button>
+          <button on:click={() => {loading = false, error = '', statusMessage = ''}} class="w-full mt-8 rounded btn btn-primary">Ok</button>
         {:else} 
-          <p>Väntar på bekräftelse från värmepumpen...</p>
+          <p>{statusMessage || 'Väntar på bekräftelse från värmepumpen...'}</p>
         {/if}
       </div>
     </div>
@@ -208,8 +226,8 @@
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-500 bg-opacity-50">
     <div class="p-6 bg-white rounded-lg shadow-lg">
       <div class="text-center">
-        <p class="font-bold text-green-500">Datan är skickad till värmepumpen!</p>
-        <button on:click={() => {success = false}} class="w-full mt-8 rounded btn btn-primary">Ok</button>
+        <p class="font-bold text-green-500">{statusMessage || 'Datan är skickad till värmepumpen!'}</p>
+        <button on:click={() => {success = false, statusMessage = ''}} class="w-full mt-8 rounded btn btn-primary">Ok</button>
       </div>
     </div>
   </div>

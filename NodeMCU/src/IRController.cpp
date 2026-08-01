@@ -6,7 +6,8 @@ IRSenderESP8266 IR(5);
 static constexpr char TAG_IR[] = "IR";
 
 // Build a Sharp-compatible command frame and transmit it to the heat pump.
-void IRController::send(uint8_t power, uint8_t tenMode, uint8_t fanSpeed, uint8_t temperature)
+// Returns false when the input values are rejected as invalid.
+bool IRController::send(uint8_t power, uint8_t tenMode, uint8_t fanSpeed, uint8_t temperature)
 {
   ESPLogger.trace(TAG_IR, "IR send request raw values power=%u tenMode=%u fan=%u temp=%u",
                   power, tenMode, fanSpeed, temperature);
@@ -16,20 +17,14 @@ void IRController::send(uint8_t power, uint8_t tenMode, uint8_t fanSpeed, uint8_
   const bool fanIsValid = (fanSpeed <= 3);
   const bool tempIsValid = (temperature >= 16 && temperature <= 30);
 
-  uint8_t safePower = powerIsValid ? power : 0;
-  uint8_t safeTenMode = tenModeIsValid ? tenMode : 0;
-  uint8_t safeFanSpeed = fanIsValid ? fanSpeed : 0;
-  uint8_t safeTemperature = tempIsValid ? temperature : 20;
-
   if (!powerIsValid || !tenModeIsValid || !fanIsValid || !tempIsValid) {
     ESPLogger.error(TAG_IR, "Out-of-range IR command values received (power=%u tenMode=%u fan=%u temp=%u)",
                     power, tenMode, fanSpeed, temperature);
-    ESPLogger.warn(TAG_IR, "Invalid IR command values received; using safe defaults (power=%u tenMode=%u fan=%u temp=%u)",
-                   safePower, safeTenMode, safeFanSpeed, safeTemperature);
+    return false;
   }
 
   ESPLogger.info(TAG_IR, "Sending IR command power=%u tenMode=%u fan=%u temp=%u",
-                 safePower, safeTenMode, safeFanSpeed, safeTemperature);
+                 power, tenMode, fanSpeed, temperature);
 
   //uint8_t SharpTemplate[] = { 0xAA, 0x5A, 0xCF, 0x10, 0x03, 0x21, 0x21, 0x0E, 0x08, 0x80, 0x04, 0xF0, 0xB1 }; // Heat 20 deg auto fan
   //uint8_t SharpTemplate[] = {0xAA, 0x5A, 0xCF, 0x10, 0x03, 0x11, 0x21, 0x0F, 0x08, 0x80, 0x00, 0xF0, 0x01};

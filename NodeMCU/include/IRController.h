@@ -7,7 +7,8 @@
 class IRController {
 public:
     // Build and transmit the command frame for the Sharp-compatible air conditioner.
-    void send(uint8_t power, uint8_t tenMode, uint8_t fanSpeed, uint8_t temperature);
+    // Returns true when the command was accepted for transmission.
+    bool send(uint8_t power, uint8_t tenMode, uint8_t fanSpeed, uint8_t temperature);
 
     #define SHARP_AIRCON1_HDR_MARK   3540 // 3540 // 3820
     #define SHARP_AIRCON1_HDR_SPACE  1720 // 1720 // 1680

@@ -77,7 +77,10 @@ void initializeSensor();
 void processFirebaseData(AsyncResult& result);
 void handleSensorReadings();
 unsigned long long getCurrentUnixTime();
+String escapeJsonString(const char* value);
+bool publishCommandAcknowledgement(int commandId, const char* status, const char* message, const char* error = nullptr, int power = 0, int tenMode = 0, int fan = 0, float temp = 0.0f);
 void logHeapUsage(const char* tag, LogLevel level = LogLevel::DEBUG);
+void logFirebaseWriteResult(AsyncResult& result);
 void publishHeartbeat();
 void checkSystemHealth();
 
@@ -375,6 +378,56 @@ static bool parseHeatpumpCommandPayload(const char* jsonStr, int& powerValue, in
            parseJsonIntField(jsonStr, "id", idValue);
 }
 
+String escapeJsonString(const char* value) {
+    String escaped;
+    if (value == nullptr) {
+        return escaped;
+    }
+
+    escaped.reserve(strlen(value) + 8);
+    for (size_t i = 0; value[i] != '\0'; ++i) {
+        switch (value[i]) {
+            case '"': escaped += "\\\""; break;
+            case '\\': escaped += "\\\\"; break;
+            case '\n': escaped += "\\n"; break;
+            case '\r': escaped += "\\r"; break;
+            case '\t': escaped += "\\t"; break;
+            default: escaped += value[i]; break;
+        }
+    }
+
+    return escaped;
+}
+
+bool publishCommandAcknowledgement(int commandId, const char* status, const char* message, const char* error, int power, int tenMode, int fan, float temp) {
+    if (WiFi.status() != WL_CONNECTED || !firebaseApp.ready()) {
+        ESPLogger.warn(TAG_FIREBASE, "Skipping command acknowledgement because Wi-Fi or Firebase is not ready");
+        return false;
+    }
+
+    String payload;
+    payload.reserve(220);
+    payload = String("{\"status\":\"") + status +
+              "\",\"id\":" + String(commandId) +
+              ",\"message\":\"" + escapeJsonString(message) +
+              "\",\"timestamp\":" + String(getCurrentUnixTime()) +
+              ",\"power\":" + String(power) +
+              ",\"tenDegreeMode\":" + String(tenMode) +
+              ",\"fan\":" + String(fan) +
+              ",\"temp\":" + String(temp, 1);
+
+    if (error != nullptr && error[0] != '\0') {
+        payload += ",\"error\":\"" + escapeJsonString(error) + "\"";
+    }
+
+    payload += "}";
+
+    object_t ackJson(payload.c_str());
+    databaseSend.set<object_t>(asyncClientSend, "/response", ackJson, logFirebaseWriteResult, TASK_UID_ACK);
+    ESPLogger.debug(TAG_FIREBASE, "Published acknowledgement status=%s id=%d", status, commandId);
+    return true;
+}
+
 // Firebase stream callbacks arrive here when a command is pushed into the database.
 void processFirebaseData(AsyncResult& result) {
     if (!result.isResult()) {
@@ -425,7 +478,7 @@ void processFirebaseData(AsyncResult& result) {
             ESPLogger.warn(TAG_FIREBASE, "Restart command received from Firebase; flushing logs before reboot");
             ESPLogger.fatal(TAG_FIREBASE, "Remote restart command accepted");
             ESPLogger.loop();
-            databaseSend.set(asyncClientSend, "/heatpump/restart", false, [](AsyncResult&){}, TASK_UID_ACK);
+            databaseSend.set<bool>(asyncClientSend, "/heatpump/restart", false, logFirebaseWriteResult, TASK_UID_ACK);
             delay(3000);
             ESP.restart();
         }
@@ -438,40 +491,48 @@ void processFirebaseData(AsyncResult& result) {
 
         if (!parseHeatpumpCommandPayload(jsonStr, powerValue, tenModeValue, fanValue, tempValue, idValue)) {
             ESPLogger.warn(TAG_FIREBASE, "Incoming command is missing one or more required fields");
+            publishCommandAcknowledgement(0, "failed", "Command payload was invalid", "Incoming command is missing one or more required fields");
             return;
         }
 
-        if ((powerValue != 0 && powerValue != 1) ||
-            (tenModeValue != 0 && tenModeValue != 1) ||
-            fanValue < 0 || fanValue > static_cast<int>(MAX_FAN_SPEED) ||
-            tempValue < static_cast<float>(MIN_SUPPORTED_TEMPERATURE) ||
-            tempValue > static_cast<float>(MAX_SUPPORTED_TEMPERATURE)) {
+        const bool commandValuesAreValid = (powerValue == 0 || powerValue == 1) &&
+                                           (tenModeValue == 0 || tenModeValue == 1) &&
+                                           fanValue >= 0 && fanValue <= static_cast<int>(MAX_FAN_SPEED) &&
+                                           tempValue >= static_cast<float>(MIN_SUPPORTED_TEMPERATURE) &&
+                                           tempValue <= static_cast<float>(MAX_SUPPORTED_TEMPERATURE);
+
+        if (!commandValuesAreValid) {
             ESPLogger.error(TAG_FIREBASE,
-                            "Command values out of range (power=%d tenMode=%d fan=%d temp=%.1f); IR sender will sanitize",
+                            "Command values out of range (power=%d tenMode=%d fan=%d temp=%.1f)",
                             powerValue,
                             tenModeValue,
                             fanValue,
                             tempValue);
+            publishCommandAcknowledgement(idValue, "failed", "Command rejected by validation", "One or more command values were outside the supported range", powerValue, tenModeValue, fanValue, tempValue);
+            return;
         }
 
         ESPLogger.info(TAG_FIREBASE, "Processing valid heatpump command power=%d tenMode=%d fan=%d temp=%.1f",
                        powerValue, tenModeValue, fanValue, tempValue);
-        irController.send(powerValue, tenModeValue, fanValue, static_cast<uint8_t>(tempValue));
+
+        publishCommandAcknowledgement(idValue, "received", "Command received by the controller", nullptr, powerValue, tenModeValue, fanValue, tempValue);
+        const bool irSent = irController.send(powerValue, tenModeValue, fanValue, static_cast<uint8_t>(tempValue));
 
         logHeapUsage("processFirebaseData:after_send_ir");
 
         ESPLogger.debug(TAG_FIREBASE, "Command ID: %d", idValue);
 
-        if (idValue) {
-            ESPLogger.info(TAG_FIREBASE, "Sending acknowledgment for command ID: %d", idValue);
-            databaseSend.set(asyncClientSend, "/response", idValue, [](AsyncResult&){}, TASK_UID_ACK);
-            ESPLogger.debug(TAG_FIREBASE, "Queued acknowledgment task; stream tasks=%u send tasks=%u",
-                            static_cast<unsigned>(asyncClientStream.taskCount()),
-                            static_cast<unsigned>(asyncClientSend.taskCount()));
-            logHeapUsage("processFirebaseData:after_ack_schedule");
-        } else {
-            ESPLogger.debug(TAG_FIREBASE, "No valid command ID found; skipping acknowledgment");
+        if (!irSent) {
+            ESPLogger.error(TAG_FIREBASE, "IR command was rejected for command ID: %d", idValue);
+            publishCommandAcknowledgement(idValue, "failed", "Command could not be executed", "The IR controller rejected the command", powerValue, tenModeValue, fanValue, tempValue);
+            return;
         }
+
+        publishCommandAcknowledgement(idValue, "executed", "Command executed successfully", nullptr, powerValue, tenModeValue, fanValue, tempValue);
+        ESPLogger.debug(TAG_FIREBASE, "Queued acknowledgment task; stream tasks=%u send tasks=%u",
+                        static_cast<unsigned>(asyncClientStream.taskCount()),
+                        static_cast<unsigned>(asyncClientSend.taskCount()));
+        logHeapUsage("processFirebaseData:after_ack_schedule");
     } else {
         ESPLogger.trace(TAG_FIREBASE, "Ignoring non-stream database result");
     }
@@ -518,8 +579,8 @@ void handleSensorReadings() {
         snprintf(humPath, sizeof(humPath), "/temp/%llu/hum", timestamp);
 
         ESPLogger.debug(TAG_SENSOR, "Publishing sensor data at timestamp %llu", timestamp);
-        databaseSend.set(asyncClientSend, tempPath, temperature, [](AsyncResult&){}, TASK_UID_PUSH_TEMP);
-        databaseSend.set(asyncClientSend, humPath, humidity, [](AsyncResult&){}, TASK_UID_PUSH_HUM);
+        databaseSend.set<float>(asyncClientSend, tempPath, temperature, logFirebaseWriteResult, TASK_UID_PUSH_TEMP);
+        databaseSend.set<float>(asyncClientSend, humPath, humidity, logFirebaseWriteResult, TASK_UID_PUSH_HUM);
         ESPLogger.debug(TAG_SENSOR, "Queued sensor upload tasks; stream tasks=%u send tasks=%u",
                         static_cast<unsigned>(asyncClientStream.taskCount()),
                         static_cast<unsigned>(asyncClientSend.taskCount()));
@@ -558,6 +619,24 @@ void logHeapUsage(const char* tag, LogLevel level) {
     ESPLogger.logf(level, TAG_HEAP, "%s free=%u min=%u frag=%u", tag, (unsigned)freeHeap, (unsigned)minHeapSeen, (unsigned)frag);
 }
 
+void logFirebaseWriteResult(AsyncResult& result) {
+    if (!result.isResult()) {
+        return;
+    }
+
+    if (result.isError()) {
+        ESPLogger.error(TAG_FIREBASE, "Firebase write failed for task %s: %s (code %d)",
+                        result.uid().c_str(),
+                        result.error().message().c_str(),
+                        result.error().code());
+        return;
+    }
+
+    if (result.available()) {
+        ESPLogger.trace(TAG_FIREBASE, "Firebase write completed for task %s", result.uid().c_str());
+    }
+}
+
 void publishHeartbeat() {
     const unsigned long now = millis();
     if (lastHeartbeatSendTime != 0 && now - lastHeartbeatSendTime < HEARTBEAT_INTERVAL_MS) {
@@ -571,24 +650,29 @@ void publishHeartbeat() {
     }
 
     const bool online = true;
-    const unsigned long uptimeSeconds = now / 1000UL;
-    const size_t freeHeap = ESP.getFreeHeap();
-    const uint8_t frag = ESP.getHeapFragmentation();
+    const int uptimeSeconds = static_cast<int>(now / 1000UL);
+    const int freeHeap = static_cast<int>(ESP.getFreeHeap());
+    const int frag = static_cast<int>(ESP.getHeapFragmentation());
     const int rssi = WiFi.RSSI();
-    const size_t minHeap = (minHeapSeen != (size_t)-1) ? minHeapSeen : freeHeap;
-    const unsigned long long lastSeen = getCurrentUnixTime();
+    const int minHeap = static_cast<int>((minHeapSeen != (size_t)-1) ? minHeapSeen : ESP.getFreeHeap());
+    const int lastSeen = static_cast<int>(getCurrentUnixTime());
 
-    databaseSend.set(asyncClientSend, "/status/heartbeat/online", online, [](AsyncResult&){}, "heartbeatOnline");
-    databaseSend.set(asyncClientSend, "/status/heartbeat/uptime", static_cast<unsigned long>(uptimeSeconds), [](AsyncResult&){}, "heartbeatUptime");
-    databaseSend.set(asyncClientSend, "/status/heartbeat/freeHeap", static_cast<unsigned long>(freeHeap), [](AsyncResult&){}, "heartbeatHeap");
-    databaseSend.set(asyncClientSend, "/status/heartbeat/minHeap", static_cast<unsigned long>(minHeap), [](AsyncResult&){}, "heartbeatMinHeap");
-    databaseSend.set(asyncClientSend, "/status/heartbeat/frag", static_cast<unsigned int>(frag), [](AsyncResult&){}, "heartbeatFrag");
-    databaseSend.set(asyncClientSend, "/status/heartbeat/rssi", rssi, [](AsyncResult&){}, "heartbeatRssi");
-    databaseSend.set(asyncClientSend, "/status/heartbeat/lastSeen", lastSeen, [](AsyncResult&){}, "heartbeatSeen");
+    String heartbeatPayload;
+    heartbeatPayload.reserve(160);
+    heartbeatPayload = String("{\"online\":") + (online ? "true" : "false") +
+                       ",\"uptime\":" + String(uptimeSeconds) +
+                       ",\"freeHeap\":" + String(freeHeap) +
+                       ",\"minHeap\":" + String(minHeap) +
+                       ",\"frag\":" + String(frag) +
+                       ",\"rssi\":" + String(rssi) +
+                       ",\"lastSeen\":" + String(lastSeen) + "}";
 
-    ESPLogger.debug(TAG_FIREBASE, "Heartbeat published: uptime=%lu freeHeap=%u minHeap=%u frag=%u rssi=%d", 
-                    uptimeSeconds, static_cast<unsigned>(freeHeap), static_cast<unsigned>(minHeap), 
-                    static_cast<unsigned>(frag), rssi);
+    object_t heartbeatJson(heartbeatPayload.c_str());
+    databaseSend.set<object_t>(asyncClientSend, "/status/heartbeat", heartbeatJson, logFirebaseWriteResult, "heartbeatPayload");
+
+    ESPLogger.debug(TAG_FIREBASE, "Heartbeat payload: %s", heartbeatPayload.c_str());
+    ESPLogger.debug(TAG_FIREBASE, "Heartbeat published: uptime=%d freeHeap=%d minHeap=%d frag=%d rssi=%d",
+                    uptimeSeconds, freeHeap, minHeap, frag, rssi);
 }
 
 // Perform lightweight health checks and restart the ESP if it becomes unhealthy.
