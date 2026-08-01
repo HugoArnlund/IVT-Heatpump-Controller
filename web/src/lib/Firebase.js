@@ -32,11 +32,11 @@ export const login = (loginError, userInfo) => {
       })
       .catch((error) => {
         console.error(error)
-        loginError.set("Could not login");
+        loginError.set("Kunde inte logga in");
         goto("/login");
       });
   } else {
-      loginError.set( "No login info saved to localstorage");
+      loginError.set("Ingen inloggningsinformation sparad i localStorage");
       goto("/login");
   }
 
@@ -70,7 +70,7 @@ export const ensureAuthenticated = async () => {
     return userCredential.user;
   }
 
-  throw new Error("No login info saved to localstorage");
+  throw new Error("Ingen inloggningsinformation sparad i localStorage");
 };
 
 export const writeHeatpumpData = async (data) => {
@@ -87,7 +87,7 @@ export const writeHeatpumpData = async (data) => {
     console.log('Heatpump data successfully written');
     return true;
   } catch (error) {
-    console.error('Error writing heatpump data:', error.message);
+    console.error('Fel vid skrivning av kommandodata:', error.message);
     return false;
   }
 };
@@ -136,7 +136,7 @@ export const listenForResponse = (cb) => {
         cb(null, error.message);
       });
     } catch (error) {
-      console.error("Unable to subscribe to response updates:", error.message);
+      console.error("Kunde inte prenumerera på svarsupdateringar:", error.message);
       cb(null, error.message);
     }
   };
@@ -181,11 +181,11 @@ export const listenForDeviceStatus = (callback) => {
 
         callback(value);
       }, (error) => {
-        console.error("Device status error:", error);
+        console.error("Fel i enhetsstatus:", error);
         callback(null);
       });
     } catch (error) {
-      console.error("Unable to subscribe to device status:", error.message);
+      console.error("Kunde inte prenumerera på enhetsstatus:", error.message);
       callback(null);
     }
   };

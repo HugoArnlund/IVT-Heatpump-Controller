@@ -98,7 +98,7 @@ void setup() {
     ESPLogger.trace(TAG_MAIN, "Boot sequence started, reset reason: %s", ESP.getResetReason().c_str());
 
     ESPLogger.clearSinks();
-    ESPLogger.addSink(&serialSink, LogLevel::TRACE);
+    ESPLogger.addSink(&serialSink, LogLevel::INFO);
 
     ESPLogger.info(TAG_MAIN, "Logger initialized");
     ESPLogger.info(TAG_MAIN, "Firmware version: %llu", static_cast<unsigned long long>(getFirmwareVersion()));
@@ -491,7 +491,7 @@ void processFirebaseData(AsyncResult& result) {
 
         if (!parseHeatpumpCommandPayload(jsonStr, powerValue, tenModeValue, fanValue, tempValue, idValue)) {
             ESPLogger.warn(TAG_FIREBASE, "Incoming command is missing one or more required fields");
-            publishCommandAcknowledgement(0, "failed", "Command payload was invalid", "Incoming command is missing one or more required fields");
+            publishCommandAcknowledgement(0, "failed", "Kommandot var ogiltigt", "Kommandot saknade ett eller flera nödvändiga fält");
             return;
         }
 
@@ -508,14 +508,14 @@ void processFirebaseData(AsyncResult& result) {
                             tenModeValue,
                             fanValue,
                             tempValue);
-            publishCommandAcknowledgement(idValue, "failed", "Command rejected by validation", "One or more command values were outside the supported range", powerValue, tenModeValue, fanValue, tempValue);
+            publishCommandAcknowledgement(idValue, "failed", "Kommandot innehåller felaktiga värden", "Ett eller flera kommandovärden låg utanför det tillåtna intervallet", powerValue, tenModeValue, fanValue, tempValue);
             return;
         }
 
         ESPLogger.info(TAG_FIREBASE, "Processing valid heatpump command power=%d tenMode=%d fan=%d temp=%.1f",
                        powerValue, tenModeValue, fanValue, tempValue);
 
-        publishCommandAcknowledgement(idValue, "received", "Command received by the controller", nullptr, powerValue, tenModeValue, fanValue, tempValue);
+        publishCommandAcknowledgement(idValue, "received", "Kommandot mottogs av värmepumpen", nullptr, powerValue, tenModeValue, fanValue, tempValue);
         const bool irSent = irController.send(powerValue, tenModeValue, fanValue, static_cast<uint8_t>(tempValue));
 
         logHeapUsage("processFirebaseData:after_send_ir");
@@ -524,11 +524,11 @@ void processFirebaseData(AsyncResult& result) {
 
         if (!irSent) {
             ESPLogger.error(TAG_FIREBASE, "IR command was rejected for command ID: %d", idValue);
-            publishCommandAcknowledgement(idValue, "failed", "Command could not be executed", "The IR controller rejected the command", powerValue, tenModeValue, fanValue, tempValue);
+            publishCommandAcknowledgement(idValue, "failed", "Kommandot kunde inte utföras", "Värmepumpen avvisade kommandot", powerValue, tenModeValue, fanValue, tempValue);
             return;
         }
 
-        publishCommandAcknowledgement(idValue, "executed", "Command executed successfully", nullptr, powerValue, tenModeValue, fanValue, tempValue);
+        publishCommandAcknowledgement(idValue, "executed", "Kommandot lyckades", nullptr, powerValue, tenModeValue, fanValue, tempValue);
         ESPLogger.debug(TAG_FIREBASE, "Queued acknowledgment task; stream tasks=%u send tasks=%u",
                         static_cast<unsigned>(asyncClientStream.taskCount()),
                         static_cast<unsigned>(asyncClientSend.taskCount()));

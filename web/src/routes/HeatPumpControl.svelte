@@ -70,12 +70,12 @@
       console.debug("Sending data to heatpump:", data);
       const wrote = await writeHeatpumpData(data);
       if (!wrote) {
-        throw new Error("Firebase write failed");
+        throw new Error("Firebase-skrivning misslyckades");
       }
 
       let timeout;
 
-      console.info("Waiting for confirmation from heatpump...");
+      console.info("Väntar på bekräftelse från värmepumpen...");
       const stopListening = listenForResponse((response, err) => {
         if (err) {
           console.warn("Error or no data:", err);
@@ -119,7 +119,7 @@
       });
 
       timeout = setTimeout(() => {
-        console.error("Timeout: No response from heatpump.");
+        console.error("Tidsgräns: inget svar från värmepumpen.");
         loading = false;
         error = 'Tidsgräns: Inget svar från värmepumpen.';
         statusMessage = 'Ingen bekräftelse mottogs inom tidsgränsen.';
@@ -138,7 +138,22 @@
   <Temperature bind:temp={currentSettings.temp} bind:disabled={disabledSettings.temp} bind:mode={currentSettings.mode} {updateSetting}></Temperature>
 </div>
 
-
+{#if deviceStatus}
+  <div class="w-8/12 p-4 mx-auto mt-4 text-sm border rounded-lg shadow-sm bg-base-100 border-base-300">
+    <div class="flex items-center justify-between">
+      <p class="font-semibold">Enhetsstatus</p>
+      <span class="badge {deviceStatus.online ? 'badge-success' : 'badge-error'}">{deviceStatus.online ? 'Online' : 'Offline'}</span>
+    </div>
+    <div class="mt-2 space-y-1 text-gray-600">
+      <p>Uptime: {formatUptime(deviceStatus.uptime)}</p>
+      <p>Heap: {deviceStatus.freeHeap ?? '–'} bytes</p>
+      <p>Min heap: {deviceStatus.minHeap ?? '–'} bytes</p>
+      <p>Fragmentering: {deviceStatus.frag ?? '–'}%</p>
+      <p>Signal: {deviceStatus.rssi ?? '–'} dBm</p>
+      <p>Senast sedd: {formatTimestamp(deviceStatus.lastSeen ?? deviceStatus.ts)}</p>
+    </div>
+  </div>
+{/if}
 
 <div class="w-full mt-6">
   <div class="flex flex-col items-center w-full">
@@ -233,20 +248,4 @@
   </div>
 {/if}
 
-{#if deviceStatus}
-  <div class="w-8/12 p-4 mx-auto mt-4 text-sm border rounded-lg shadow-sm bg-base-100 border-base-300">
-    <div class="flex items-center justify-between">
-      <p class="font-semibold">Enhetsstatus</p>
-      <span class="badge {deviceStatus.online ? 'badge-success' : 'badge-error'}">{deviceStatus.online ? 'Online' : 'Offline'}</span>
-    </div>
-    <div class="mt-2 space-y-1 text-gray-600">
-      <p>Uptime: {formatUptime(deviceStatus.uptime)}</p>
-      <p>Heap: {deviceStatus.freeHeap ?? '–'} bytes</p>
-      <p>Min heap: {deviceStatus.minHeap ?? '–'} bytes</p>
-      <p>Fragmentering: {deviceStatus.frag ?? '–'}%</p>
-      <p>Signal: {deviceStatus.rssi ?? '–'} dBm</p>
-      <p>Senast sedd: {formatTimestamp(deviceStatus.lastSeen ?? deviceStatus.ts)}</p>
-    </div>
-  </div>
-{/if}
 {/if}

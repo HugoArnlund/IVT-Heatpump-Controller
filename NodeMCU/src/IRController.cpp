@@ -17,14 +17,21 @@ bool IRController::send(uint8_t power, uint8_t tenMode, uint8_t fanSpeed, uint8_
   const bool fanIsValid = (fanSpeed <= 3);
   const bool tempIsValid = (temperature >= 16 && temperature <= 30);
 
+  uint8_t safePower = powerIsValid ? power : 0;
+  uint8_t safeTenMode = tenModeIsValid ? tenMode : 0;
+  uint8_t safeFanSpeed = fanIsValid ? fanSpeed : 0;
+  uint8_t safeTemperature = tempIsValid ? temperature : 20;
+
   if (!powerIsValid || !tenModeIsValid || !fanIsValid || !tempIsValid) {
     ESPLogger.error(TAG_IR, "Out-of-range IR command values received (power=%u tenMode=%u fan=%u temp=%u)",
                     power, tenMode, fanSpeed, temperature);
+    ESPLogger.warn(TAG_IR, "Invalid IR command values received; using safe defaults (power=%u tenMode=%u fan=%u temp=%u)",
+                   safePower, safeTenMode, safeFanSpeed, safeTemperature);
     return false;
   }
 
   ESPLogger.info(TAG_IR, "Sending IR command power=%u tenMode=%u fan=%u temp=%u",
-                 power, tenMode, fanSpeed, temperature);
+                 safePower, safeTenMode, safeFanSpeed, safeTemperature);
 
   //uint8_t SharpTemplate[] = { 0xAA, 0x5A, 0xCF, 0x10, 0x03, 0x21, 0x21, 0x0E, 0x08, 0x80, 0x04, 0xF0, 0xB1 }; // Heat 20 deg auto fan
   //uint8_t SharpTemplate[] = {0xAA, 0x5A, 0xCF, 0x10, 0x03, 0x11, 0x21, 0x0F, 0x08, 0x80, 0x00, 0xF0, 0x01};
@@ -94,7 +101,7 @@ bool IRController::send(uint8_t power, uint8_t tenMode, uint8_t fanSpeed, uint8_
 
   // Print the final command bytes for debugging and protocol inspection.
   ESPLogger.debug(TAG_IR, "IR frame bytes:");
-  for (int i = 0; i < sizeof(SharpTemplate); ++i) {
+  for (size_t i = 0; i < sizeof(SharpTemplate); ++i) {
     Serial.print("0x");
     Serial.print(static_cast<int>(SharpTemplate[i]), HEX);
     Serial.print(" ");
@@ -102,5 +109,6 @@ bool IRController::send(uint8_t power, uint8_t tenMode, uint8_t fanSpeed, uint8_
   Serial.print("\n");
 
   ESPLogger.trace(TAG_IR, "IR frame transmission complete");
+  return true;
 }
 
