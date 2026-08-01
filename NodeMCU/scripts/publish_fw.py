@@ -23,6 +23,18 @@ def publish_firmware(source, target, env):
     copy2(firmware_source, versioned_firmware)
     latest_version_file.write_text(version + "\n", encoding="utf-8")
 
+    # Keep only the 5 newest firmware files
+    firmware_files = [
+        f for f in firmware_dir.iterdir()
+        if f.is_file() and f.name != "latest.txt"
+    ]
+
+    firmware_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
+
+    for old_firmware in firmware_files[5:]:
+        old_firmware.unlink()
+        print(f"Removed old firmware: {old_firmware.name}")
+
     print(f"Published firmware to {versioned_firmware}")
     print(f"Updated {latest_version_file}")
 
