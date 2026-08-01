@@ -79,6 +79,21 @@ export const listenForResponse = (cb) => {
   return unsubscribe;
 };
 
+export const listenForDeviceStatus = (callback) => {
+  const statusRef = ref(db, "/status/heartbeat");
+
+  return onValue(statusRef, (snapshot) => {
+    if (snapshot.exists()) {
+      callback(snapshot.val());
+    } else {
+      callback(null);
+    }
+  }, (error) => {
+    console.error("Device status error:", error);
+    callback(null);
+  });
+};
+
 // Lyssna på temperaturdata
 export const listenToTemperatureData = (callback) => {
   const dataRef = ref(db, "/temp");

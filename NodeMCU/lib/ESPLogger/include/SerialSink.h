@@ -8,11 +8,22 @@
 class SerialSink : public LogSink
 {
 public:
-    void write(LogLevel, const char*, const char* message) override
+    void write(LogLevel level, const char* tag, const char* message) override
     {
-        if (message != nullptr) {
-            Serial.println(message);
+        if (message == nullptr) {
+            return;
         }
+
+        const char* levelStr = toString(level);
+        const char* tagStr = tag != nullptr ? tag : "Logger";
+
+        Serial.printf(
+            "[%8lu] %-5s %-12s %s\n",
+            millis(),
+            levelStr,
+            tagStr,
+            message
+        );
     }
 };
 

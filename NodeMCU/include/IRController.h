@@ -3,9 +3,10 @@
 
 #include <IRSender.h>
 
+// Small wrapper around the raw IR transmission logic used by the heat pump controller.
 class IRController {
 public:
-
+    // Build and transmit the command frame for the Sharp-compatible air conditioner.
     void send(uint8_t power, uint8_t tenMode, uint8_t fanSpeed, uint8_t temperature);
 
     #define SHARP_AIRCON1_HDR_MARK   3540 // 3540 // 3820

@@ -1,6 +1,9 @@
 #ifndef ESPLOGGER_LOGSINK_H
 #define ESPLOGGER_LOGSINK_H
 
+#include <stdio.h>
+#include <string.h>
+
 #include "LogLevel.h"
 
 class LogSink

@@ -1,14 +1,48 @@
 <script>
+  import { onMount } from "svelte";
   import { updateSetting } from "$lib/controller.js";
   import { settings, settingsDefault } from "$lib/store.js";
   import Temperature from "./Temperature.svelte";
-  import { writeHeatpumpData, listenForResponse } from "$lib/Firebase.js"
+  import { writeHeatpumpData, listenForResponse, listenForDeviceStatus } from "$lib/Firebase.js"
 
   let currentSettings;
   let disabledSettings;
   let loading = false; // Loading state for UI
   let error = ''; // Error message to show
   let success = false; // Success state for UI
+  let deviceStatus = null;
+  let unsubscribeDeviceStatus;
+
+  function formatUptime(seconds) {
+    const totalSeconds = Number(seconds || 0);
+    const minutes = Math.floor(totalSeconds / 60);
+    const hours = Math.floor(minutes / 60);
+    if (hours > 0) {
+      return `${hours} h ${minutes % 60} min`;
+    }
+    if (minutes > 0) {
+      return `${minutes} min`;
+    }
+    return `${totalSeconds} s`;
+  }
+
+  function formatTimestamp(value) {
+    if (!value) return "–";
+    const date = new Date(Number(value) * 1000);
+    return date.toLocaleString();
+  }
+
+  onMount(() => {
+    unsubscribeDeviceStatus = listenForDeviceStatus((status) => {
+      deviceStatus = status;
+    });
+
+    return () => {
+      if (unsubscribeDeviceStatus) {
+        unsubscribeDeviceStatus();
+      }
+    };
+  });
 
   // Reactive statement to track current settings and their disabled states
   $: {
@@ -145,6 +179,23 @@
     </div>-->
   </div>
 </div>
+
+{#if deviceStatus}
+  <div class="w-8/12 p-4 mx-auto mt-4 text-sm border rounded-lg shadow-sm bg-base-100 border-base-300">
+    <div class="flex items-center justify-between">
+      <p class="font-semibold">Enhetsstatus</p>
+      <span class="badge {deviceStatus.online ? 'badge-success' : 'badge-error'}">{deviceStatus.online ? 'Online' : 'Offline'}</span>
+    </div>
+    <div class="mt-2 space-y-1 text-gray-600">
+      <p>Uptime: {formatUptime(deviceStatus.uptime)}</p>
+      <p>Heap: {deviceStatus.freeHeap ?? '–'} bytes</p>
+      <p>Min heap: {deviceStatus.minHeap ?? '–'} bytes</p>
+      <p>Fragmentering: {deviceStatus.frag ?? '–'}%</p>
+      <p>Signal: {deviceStatus.rssi ?? '–'} dBm</p>
+      <p>Senast sedd: {formatTimestamp(deviceStatus.lastSeen ?? deviceStatus.ts)}</p>
+    </div>
+  </div>
+{/if}
 
 <div class="w-8/12 mt-3">
   <button on:click={sendToHeatpump} class="w-full h-16 mt-3 mb-8 rounded btn btn-primary">

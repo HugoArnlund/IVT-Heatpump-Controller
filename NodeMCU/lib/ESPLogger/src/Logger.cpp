@@ -7,33 +7,6 @@
 
 Logger ESPLogger;
 
-namespace {
-
-void appendText(char* buffer, size_t capacity, size_t& used, const char* text)
-{
-    if (buffer == nullptr || capacity == 0 || used >= capacity) {
-        return;
-    }
-
-    if (text == nullptr) {
-        text = "(null)";
-    }
-
-    while (*text != '\0' && used + 1 < capacity) {
-        buffer[used++] = *text++;
-    }
-
-    buffer[used] = '\0';
-}
-
-void appendLevelPrefix(char* buffer, size_t capacity, size_t& used, LogLevel level)
-{
-    appendText(buffer, capacity, used, "[");
-    appendText(buffer, capacity, used, toString(level));
-    appendText(buffer, capacity, used, "] [");
-}
-
-} // namespace
 
 Logger::Logger()
     : m_buffer{0}
@@ -164,28 +137,18 @@ void Logger::logv(LogLevel level, const char* tag, const char* fmt, va_list args
         return;
     }
 
-    size_t used = 0;
     m_buffer[0] = '\0';
 
-    appendLevelPrefix(m_buffer, sizeof(m_buffer), used, level);
-    appendText(m_buffer, sizeof(m_buffer), used, tag);
-    appendText(m_buffer, sizeof(m_buffer), used, "] ");
-
-    const size_t remaining = (used < sizeof(m_buffer)) ? (sizeof(m_buffer) - used) : 0;
-    if (remaining == 0) {
-        m_buffer[sizeof(m_buffer) - 1] = '\0';
-        return;
-    }
-
-    const int result = vsnprintf(m_buffer + used, remaining, fmt, args);
+    const int result = vsnprintf(m_buffer, sizeof(m_buffer), fmt, args);
     if (result < 0) {
-        m_buffer[used] = '\0';
+        m_buffer[0] = '\0';
         return;
     }
 
     for (size_t index = 0; index < m_sinkCount; ++index) {
         SinkRegistration& registration = m_sinks[index];
         if (registration.sink != nullptr && static_cast<uint8_t>(level) >= static_cast<uint8_t>(registration.minimumLevel)) {
+            char formattedBuffer[LOG_BUFFER_SIZE];
             registration.sink->write(level, tag, m_buffer);
         }
     }
