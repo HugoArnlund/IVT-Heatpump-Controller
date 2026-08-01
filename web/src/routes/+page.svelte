@@ -7,6 +7,7 @@
   import Graph from './Graph.svelte'
   import {login} from '$lib/Firebase.js'
   import { writable } from 'svelte/store';
+  import DeviceStatusCard from './DeviceStatusCard.svelte';
 
 
   let userInfo = writable();
@@ -31,7 +32,7 @@
   });
 
   function reload() {
-    window.reload();
+    window.location.reload();
   }
 </script>
 
