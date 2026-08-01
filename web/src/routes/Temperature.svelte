@@ -26,29 +26,32 @@
         </svg>          
     </button>
 
-    {#if !isNaN(temp) && !(temp === null)}
-        {#if [0,3].includes(mode)}<span class="absolute font-light text-sm -bottom-8">Relativ temperatur</span>{/if}
-        {#key numberFirst}
-            <span 
-            transition:slide={{ delay: 0, duration: 300, easing: quintOut, axis: 'y' }}
-            class="text-8xl  text-center absolute pointer-events-none {numberSecond == ""?"":"mr-[2.5rem]"}">
-                {numberFirst}
+    <div class="relative flex min-h-[8rem] items-center justify-center py-2">
+        {#if !isNaN(temp) && !(temp === null)}
+            {#if [0,3].includes(mode)}<span class="absolute -bottom-8 text-sm font-light">Relativ temperatur</span>{/if}
+            <div class="flex items-end justify-center">
+                {#key numberFirst}
+                    <span 
+                    transition:slide={{ delay: 0, duration: 300, easing: quintOut, axis: 'y' }}
+                    class="text-8xl text-center pointer-events-none {numberSecond == ""?"":"mr-[2.5rem]"}">
+                        {numberFirst}
+                    </span>
+                {/key}
+                {#key numberSecond}
+                    <span 
+                    transition:slide={{ delay: 0, duration: 300, easing: quintOut, axis: 'y' }}
+                    class="text-8xl text-center pointer-events-none ml-[2.5rem]">
+                        {numberSecond}
+                    </span>
+                {/key}
+                <span class="ml-2 text-7xl pointer-events-none">°</span>
+            </div>
+        {:else}
+            <span class="text-8xl text-center pointer-events-none">
+                -
             </span>
-        {/key}
-        {#key numberSecond}
-            <span 
-            transition:slide={{ delay: 0, duration: 300, easing: quintOut, axis: 'y' }}
-            class="text-8xl text-center absolute pointer-events-none ml-[2.5rem]">
-                {numberSecond}
-            </span>
-        {/key}
-        <span class="text-7xl absolute ml-[7.7rem] -top-2 pointer-events-none">°</span>
-    {:else}
-        <span 
-        class="text-8xl text-center absolute pointer-events-none">
-            -
-        </span>
-    {/if}
+        {/if}
+    </div>
     
     <button on:click={() => {changeTemp(1)}} class="h-18 mt-6 ml-5 w-1/2 active:translate-x-2 transition-transform duration-200">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="w-14 h-full ml-14">
