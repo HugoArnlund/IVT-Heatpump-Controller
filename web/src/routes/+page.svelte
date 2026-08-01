@@ -48,6 +48,7 @@
       <div class="w-8/12 h-96">
         <Graph></Graph>
       </div>
+      <DeviceStatusCard />
     {/if}
   </div>
 </div>
