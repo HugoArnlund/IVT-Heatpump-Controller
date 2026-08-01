@@ -138,6 +138,23 @@
   <Temperature bind:temp={currentSettings.temp} bind:disabled={disabledSettings.temp} bind:mode={currentSettings.mode} {updateSetting}></Temperature>
 </div>
 
+{#if deviceStatus}
+  <div class="w-8/12 p-4 mx-auto mt-4 mb-4 text-sm border rounded-lg shadow-sm bg-base-100 border-base-300">
+    <div class="flex items-center justify-between">
+      <p class="font-semibold">Enhetsstatus</p>
+      <span class="badge {deviceStatus.online ? 'badge-success' : 'badge-error'}">{deviceStatus.online ? 'Online' : 'Offline'}</span>
+    </div>
+    <div class="mt-2 space-y-1 text-gray-600">
+      <p>Uptime: {formatUptime(deviceStatus.uptime)}</p>
+      <p>Heap: {deviceStatus.freeHeap ?? '–'} bytes</p>
+      <p>Min heap: {deviceStatus.minHeap ?? '–'} bytes</p>
+      <p>Fragmentering: {deviceStatus.frag ?? '–'}%</p>
+      <p>Signal: {deviceStatus.rssi ?? '–'} dBm</p>
+      <p>Senast sedd: {formatTimestamp(deviceStatus.lastSeen ?? deviceStatus.ts)}</p>
+    </div>
+  </div>
+{/if}
+
 <div class="w-full mt-6">
   <div class="flex flex-col items-center w-full">
     <div class="w-9/12 flex flex-col  {disabledSettings.fan ? 'opacity-20 pointer-events-none' : ''}">
@@ -201,23 +218,6 @@
     OK! <br>Skicka till värmepumpen
   </button>
 </div>
-
-{#if deviceStatus}
-  <div class="w-8/12 p-4 mx-auto mt-4 mb-8 text-sm border rounded-lg shadow-sm bg-base-100 border-base-300">
-    <div class="flex items-center justify-between">
-      <p class="font-semibold">Enhetsstatus</p>
-      <span class="badge {deviceStatus.online ? 'badge-success' : 'badge-error'}">{deviceStatus.online ? 'Online' : 'Offline'}</span>
-    </div>
-    <div class="mt-2 space-y-1 text-gray-600">
-      <p>Uptime: {formatUptime(deviceStatus.uptime)}</p>
-      <p>Heap: {deviceStatus.freeHeap ?? '–'} bytes</p>
-      <p>Min heap: {deviceStatus.minHeap ?? '–'} bytes</p>
-      <p>Fragmentering: {deviceStatus.frag ?? '–'}%</p>
-      <p>Signal: {deviceStatus.rssi ?? '–'} dBm</p>
-      <p>Senast sedd: {formatTimestamp(deviceStatus.lastSeen ?? deviceStatus.ts)}</p>
-    </div>
-  </div>
-{/if}
 
 {#if loading || error}
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-500 bg-opacity-50">

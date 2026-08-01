@@ -599,7 +599,7 @@ unsigned long long getCurrentUnixTime() {
 
     const bool updated = timeClient.update();
     if (!updated) {
-        ESPLogger.warn(TAG_MAIN, "NTP update did not refresh time; using cached epoch value");
+        ESPLogger.debug(TAG_MAIN, "NTP update did not refresh time; using cached epoch value");
     }
 
     return timeClient.getEpochTime();
