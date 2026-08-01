@@ -134,89 +134,90 @@
 </script>
 
 {#if currentSettings}
-<div class="mt-10">
-  <Temperature bind:temp={currentSettings.temp} bind:disabled={disabledSettings.temp} bind:mode={currentSettings.mode} {updateSetting}></Temperature>
-</div>
-
-{#if deviceStatus}
-  <div class="w-8/12 p-4 mx-auto mt-4 mb-4 text-sm border rounded-lg shadow-sm bg-base-100 border-base-300">
-    <div class="flex items-center justify-between">
-      <p class="font-semibold">Enhetsstatus</p>
-      <span class="badge {deviceStatus.online ? 'badge-success' : 'badge-error'}">{deviceStatus.online ? 'Online' : 'Offline'}</span>
-    </div>
-    <div class="mt-2 space-y-1 text-gray-600">
-      <p>Uptime: {formatUptime(deviceStatus.uptime)}</p>
-      <p>Heap: {deviceStatus.freeHeap ?? '–'} bytes</p>
-      <p>Min heap: {deviceStatus.minHeap ?? '–'} bytes</p>
-      <p>Fragmentering: {deviceStatus.frag ?? '–'}%</p>
-      <p>Signal: {deviceStatus.rssi ?? '–'} dBm</p>
-      <p>Senast sedd: {formatTimestamp(deviceStatus.lastSeen ?? deviceStatus.ts)}</p>
-    </div>
+<div class="mx-auto mt-10 flex w-full max-w-xl flex-col items-center px-4 sm:px-6">
+  <div class="w-full">
+    <Temperature bind:temp={currentSettings.temp} bind:disabled={disabledSettings.temp} bind:mode={currentSettings.mode} {updateSetting}></Temperature>
   </div>
-{/if}
 
-<div class="w-full mt-6">
-  <div class="flex flex-col items-center w-full">
-    <div class="w-9/12 flex flex-col  {disabledSettings.fan ? 'opacity-20 pointer-events-none' : ''}">
-      <span class="w-full mb-2 text-center">Fläkt</span>
-      <div class="mx-3">
-        <input class="range range-sm" type="range" min="0" max="3" on:change={(e) => updateSetting("fan", parseInt(e.target.value))} bind:value={currentSettings.fan} step="1" />
-        <div class="flex justify-between w-full px-2 text-xs">
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-        </div>
-        <div class="flex justify-between w-full px-2 text-xs">
-          <span>Auto</span>
-          <span>Låg</span>
-          <span>Med</span>
-          <span>Hög</span>
-        </div>
+  {#if deviceStatus}
+    <div class="mx-auto mb-4 mt-4 w-full max-w-sm rounded-lg border border-base-300 bg-base-100 p-4 text-sm shadow-sm">
+      <div class="flex items-center justify-between">
+        <p class="font-semibold">Enhetsstatus</p>
+        <span class="badge {deviceStatus.online ? 'badge-success' : 'badge-error'}">{deviceStatus.online ? 'Online' : 'Offline'}</span>
+      </div>
+      <div class="mt-2 space-y-1 text-gray-600">
+        <p>Uptime: {formatUptime(deviceStatus.uptime)}</p>
+        <p>Heap: {deviceStatus.freeHeap ?? '–'} bytes</p>
+        <p>Min heap: {deviceStatus.minHeap ?? '–'} bytes</p>
+        <p>Fragmentering: {deviceStatus.frag ?? '–'}%</p>
+        <p>Signal: {deviceStatus.rssi ?? '–'} dBm</p>
+        <p>Senast sedd: {formatTimestamp(deviceStatus.lastSeen ?? deviceStatus.ts)}</p>
       </div>
     </div>
+  {/if}
 
-    <button on:click={() => { updateSetting("power", !currentSettings.power) }} class="btn {currentSettings.power ? 'btn-success' : 'btn-error'} {currentSettings.tenDegreeMode ?"opacity-20 pointer-events-none":""} mt-10 w-8/12 rounded">
-      {currentSettings.power ? 'På' : 'Av'}
+  <div class="mt-6 w-full">
+    <div class="flex flex-col items-center w-full">
+      <div class="flex w-full max-w-sm flex-col {disabledSettings.fan ? 'opacity-20 pointer-events-none' : ''}">
+        <span class="mb-2 w-full text-center">Fläkt</span>
+        <div class="mx-3">
+          <input class="range range-sm" type="range" min="0" max="3" on:change={(e) => updateSetting("fan", parseInt(e.target.value))} bind:value={currentSettings.fan} step="1" />
+          <div class="flex w-full justify-between px-2 text-xs">
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+          </div>
+          <div class="flex w-full justify-between px-2 text-xs">
+            <span>Auto</span>
+            <span>Låg</span>
+            <span>Med</span>
+            <span>Hög</span>
+          </div>
+        </div>
+      </div>
+
+      <button on:click={() => { updateSetting("power", !currentSettings.power) }} class="btn {currentSettings.power ? 'btn-success' : 'btn-error'} {currentSettings.tenDegreeMode ?"opacity-20 pointer-events-none":""} mt-10 w-full max-w-sm rounded">
+        {currentSettings.power ? 'På' : 'Av'}
+      </button>
+      
+      <div class="mt-6 flex w-full max-w-sm">
+        <div class="grid w-full grid-flow-col grid-cols-1 justify-between gap-4 drop-shadow-sm">
+          <!--<button on:click={() => { updateSetting("highPower", !currentSettings.highPower) }} class="btn btn-primary h-full rounded {disabledSettings.highPower ? 'opacity-20 pointer-events-none' : ''}">
+            <span class="p-4">High <br>Power</span>
+          </button>-->
+          <button on:click={() => { updateSetting("tenDegreeMode", !currentSettings.tenDegreeMode) }} class="btn btn-primary h-full rounded {currentSettings.tenDegreeMode ? 'btn-success' : 'btn-error'}">
+            <span class="p-4">10°Läge</span>
+          </button>
+        </div>
+      </div>
+
+      <!--<div class="mt-6 w-9/12 flex flex-col {disabledSettings.mode ? 'opacity-20 pointer-events-none' : ''}">
+        <span class="w-full mb-2 text-center">Läge</span>
+        <div class="mx-3">
+          <input class="range range-sm" type="range" min="0" max="3"  on:change={(e) => updateSetting("mode", parseInt(e.target.value))} bind:value={currentSettings.mode} step="1" />
+          <div class="flex justify-between w-full px-2 text-xs">
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+          </div>
+          <div class="flex justify-between w-full px-2 text-xs">
+            <span>Auto</span>
+            <span>Värme</span>
+            <span>Kylning</span>
+            <span>Avfukt</span>
+          </div>
+        </div>
+      </div>-->
+    </div>
+  </div>
+
+  <div class="mt-3 w-full max-w-sm">
+    <button on:click={sendToHeatpump} class="mb-8 h-16 w-full rounded btn btn-primary">
+      OK! <br>Skicka till värmepumpen
     </button>
-    
-    <div class="flex w-8/12 mt-6">
-      <div class="grid justify-between w-full grid-flow-col grid-cols-1 gap-4 drop-shadow-sm">
-        <!--<button on:click={() => { updateSetting("highPower", !currentSettings.highPower) }} class="btn btn-primary h-full rounded {disabledSettings.highPower ? 'opacity-20 pointer-events-none' : ''}">
-          <span class="p-4">High <br>Power</span>
-        </button>-->
-        <button on:click={() => { updateSetting("tenDegreeMode", !currentSettings.tenDegreeMode) }} class="btn btn-primary h-full rounded {currentSettings.tenDegreeMode ? 'btn-success' : 'btn-error'}">
-          <span class="p-4">10°Läge</span>
-        </button>
-      </div>
-    </div>
-
-
-    <!--<div class="mt-6 w-9/12 flex flex-col {disabledSettings.mode ? 'opacity-20 pointer-events-none' : ''}">
-      <span class="w-full mb-2 text-center">Läge</span>
-      <div class="mx-3">
-        <input class="range range-sm" type="range" min="0" max="3"  on:change={(e) => updateSetting("mode", parseInt(e.target.value))} bind:value={currentSettings.mode} step="1" />
-        <div class="flex justify-between w-full px-2 text-xs">
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-          <span>|</span>
-        </div>
-        <div class="flex justify-between w-full px-2 text-xs">
-          <span>Auto</span>
-          <span>Värme</span>
-          <span>Kylning</span>
-          <span>Avfukt</span>
-        </div>
-      </div>
-    </div>-->
   </div>
-</div>
-
-<div class="w-8/12 mt-3">
-  <button on:click={sendToHeatpump} class="w-full h-16 mt-3 mb-8 rounded btn btn-primary">
-    OK! <br>Skicka till värmepumpen
-  </button>
 </div>
 
 {#if loading || error}
