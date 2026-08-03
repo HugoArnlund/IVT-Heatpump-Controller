@@ -106,7 +106,6 @@
         <div class="mb-3 flex items-center justify-between gap-3">
           <div>
             <h2 class="text-xl font-semibold">Device logs</h2>
-            <p class="text-sm opacity-70">Recent entries are kept locally and updated as new Firebase log data arrives.</p>
           </div>
           <span class="text-sm opacity-70">{logEntries.length} entries</span>
         </div>
@@ -118,41 +117,41 @@
         {#if logEntries.length === 0}
           <p class="text-sm opacity-70">No logs received yet.</p>
         {:else}
-<div class="max-h-[32rem] overflow-auto rounded-lg border border-base-300 bg-base-100 font-mono text-sm">
+<div class="max-h-[32rem] overflow-auto space-y-2">
   {#each logEntries as entry}
-    <div class="group flex gap-3 border-b border-base-300 px-3 py-2 last:border-none hover:bg-base-200/50">
+    <div class="rounded-lg border border-base-300 bg-base-100 p-3 shadow-sm">
       
-      <!-- Level -->
-      <div class="w-16 shrink-0">
-        <span
-          class={`badge badge-sm w-full justify-center font-semibold ${
-            entry.lvl === 'ERROR' || entry.lvl === 'FATAL'
-              ? 'badge-error'
-              : entry.lvl === 'WARN'
-              ? 'badge-warning'
-              : entry.lvl === 'DEBUG'
-              ? 'badge-neutral'
-              : 'badge-info'
-          }`}
-        >
-          {entry.lvl || "INFO"}
+      <!-- Header -->
+      <div class="mb-2 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span
+            class={`badge badge-sm font-semibold ${
+              entry.lvl === 'ERROR' || entry.lvl === 'FATAL'
+                ? 'badge-error'
+                : entry.lvl === 'WARN'
+                ? 'badge-warning'
+                : entry.lvl === 'DEBUG'
+                ? 'badge-neutral'
+                : 'badge-info'
+            }`}
+          >
+            {entry.lvl || "INFO"}
+          </span>
+
+          <span class="truncate text-xs font-mono opacity-70">
+            {entry.tag || "Logger"}
+          </span>
+        </div>
+
+        <span class="shrink-0 text-xs font-mono opacity-50">
+          {entry.ts ?? "-"}
         </span>
       </div>
 
-      <!-- Timestamp -->
-      <span class="w-28 shrink-0 text-xs opacity-60">
-        {entry.ts ?? "-"}
-      </span>
-
-      <!-- Tag -->
-      <span class="w-32 shrink-0 truncate text-xs font-semibold opacity-70">
-        {entry.tag || "Logger"}
-      </span>
-
       <!-- Message -->
-      <span class="min-w-0 flex-1 break-all text-base-content">
+      <div class="break-words text-sm leading-relaxed">
         {entry.msg || ""}
-      </span>
+      </div>
 
     </div>
   {/each}

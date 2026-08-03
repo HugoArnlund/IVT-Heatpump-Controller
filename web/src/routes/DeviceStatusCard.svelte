@@ -59,7 +59,7 @@
 </script>
 
 {#if deviceStatus}
-  <div class="w-8/12 p-4 mx-auto mt-4 text-sm border rounded-lg shadow-sm bg-base-100 border-base-300">
+  <div class=" p-4 mx-auto mt-4 text-sm border rounded-lg shadow-sm bg-base-100 border-base-300">
     <div class="flex items-center justify-between">
       <p class="font-semibold">Enhetsstatus</p>
       <span class="badge {isOnline ? 'badge-success' : 'badge-error'}">{isOnline ? 'Online' : 'Offline'}</span>

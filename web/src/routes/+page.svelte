@@ -48,7 +48,7 @@
       <div class="w-8/12 h-96">
         <Graph></Graph>
       </div>
-      <div class="mt-10 mb-20 w-11/12">
+      <div class="mt-10 mb-20 w-8/12">
         <DeviceStatusCard />
       </div>
     {/if}

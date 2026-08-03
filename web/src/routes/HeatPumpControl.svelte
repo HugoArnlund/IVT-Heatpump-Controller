@@ -109,7 +109,6 @@
   <Temperature bind:temp={currentSettings.temp} bind:disabled={disabledSettings.temp} bind:mode={currentSettings.mode} {updateSetting}></Temperature>
 </div>
 
-
 <div class="w-full mt-6">
   <div class="flex flex-col items-center w-full">
     <div class="w-9/12 flex flex-col  {disabledSettings.fan ? 'opacity-20 pointer-events-none' : ''}">
