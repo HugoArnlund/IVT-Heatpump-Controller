@@ -1,19 +1,22 @@
+#pragma once
 #include "unistd.h"
 
 // =============== Configuration Section ===============
 namespace Config {
     // WiFi Configuration
-    const char* WIFI_SSID = "";
-    const char* WIFI_PASSWORD = "";
+    inline const char* WIFI_SSID = "";
+    inline const char* WIFI_PASSWORD = "";
 
     // Firebase Configuration
-    const char* WEB_API_KEY = "";
-    const char* DATABASE_URL = "";
-    const char* USER_EMAIL = "";
-    const char* USER_PASSWORD = "";
-    const char* DISCORD_WEBHOOK_URL = "";
+    inline const char* WEB_API_KEY = "";
+    inline const char* DATABASE_URL = "";
+    inline const char* USER_EMAIL = "";
+    inline const char* USER_PASSWORD = "";
+    inline const unsigned long FIREBASE_INIT_TIMEOUT = 30000; // 30 seconds
 
-    // NTP Configuration
+    inline const char* DISCORD_WEBHOOK_URL = "";
+
+        // NTP Configuration
     inline const char* NTP_SERVER = "pool.ntp.org";
     inline const long TIMEZONE_OFFSET = 0; // UTC
     inline const unsigned long NTP_UPDATE_INTERVAL = 30 * 60000; // 30 minutes
