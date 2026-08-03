@@ -77,8 +77,8 @@ bool IRController::send(uint8_t power, uint8_t tenMode, uint8_t fanSpeed, uint8_
 
 
   // Repeat the transmission a few times so the receiver can pick up the command reliably.
-  for(int i = 0; i < 3; i++) {
-    ESPLogger.trace(TAG_IR, "Transmitting IR frame repeat %d/3", i + 1);
+  for(int i = 0; i < 6; i++) {
+    ESPLogger.trace(TAG_IR, "Transmitting IR frame repeat %d/6", i + 1);
 
     // 38 kHz PWM frequency
     IR.setFrequency(38);
