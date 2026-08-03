@@ -89,6 +89,26 @@
   function reload() {
     window.location.reload();
   }
+
+  function getLogLevelBadgeClass(level) {
+    const normalizedLevel = String(level ?? "INFO").toUpperCase();
+
+    switch (normalizedLevel) {
+      case "TRACE":
+        return "badge-ghost";
+      case "DEBUG":
+        return "badge-neutral";
+      case "INFO":
+        return "badge-info";
+      case "WARN":
+        return "badge-warning";
+      case "ERROR":
+      case "FATAL":
+        return "badge-error";
+      default:
+        return "badge-info";
+    }
+  }
 </script>
 
 <div class="flex justify-center w-full min-h-screen select-none bg-base-200">
@@ -125,15 +145,7 @@
       <div class="mb-2 flex items-center justify-between gap-2">
         <div class="flex items-center gap-2">
           <span
-            class={`badge badge-sm font-semibold ${
-              entry.lvl === 'ERROR' || entry.lvl === 'FATAL'
-                ? 'badge-error'
-                : entry.lvl === 'WARN'
-                ? 'badge-warning'
-                : entry.lvl === 'DEBUG'
-                ? 'badge-neutral'
-                : 'badge-info'
-            }`}
+            class={`badge badge-sm font-semibold ${getLogLevelBadgeClass(entry.lvl)}`}
           >
             {entry.lvl || "INFO"}
           </span>
