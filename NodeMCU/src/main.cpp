@@ -24,7 +24,6 @@
 IRController irController;
 AM2302::AM2302_Sensor temperatureSensor(Config::SENSOR_PIN);
 SerialSink serialSink;
-FirebaseSink firebaseLogSink;
 
 static constexpr char TAG_MAIN[] = "Main";
 static constexpr char TAG_WIFI[] = "WiFi";
@@ -84,7 +83,6 @@ void logHeapUsage(const char* tag, LogLevel level = LogLevel::DEBUG);
 void logFirebaseWriteResult(AsyncResult& result);
 void publishHeartbeat();
 void checkSystemHealth();
-bool publishFirebaseLogBuffer(const char* path, const char* payload);
 
 // =============== Initialization and Runtime Lifecycle ===============
 static unsigned long lastWifiStatusLogTime = 0;
@@ -101,8 +99,6 @@ void setup() {
 
     ESPLogger.clearSinks();
     ESPLogger.addSink(&serialSink, LogLevel::INFO);
-    ESPLogger.addSink(&firebaseLogSink, LogLevel::INFO);
-    firebaseLogSink.setPublishCallback(publishFirebaseLogBuffer);
 
     ESPLogger.info(TAG_MAIN, "Logger initialized");
     ESPLogger.info(TAG_MAIN, "Firmware version: %llu", static_cast<unsigned long long>(getFirmwareVersion()));
@@ -639,20 +635,6 @@ void logFirebaseWriteResult(AsyncResult& result) {
     if (result.available()) {
         ESPLogger.trace(TAG_FIREBASE, "Firebase write completed for task %s", result.uid().c_str());
     }
-}
-
-bool publishFirebaseLogBuffer(const char* path, const char* payload) {
-    if (path == nullptr || payload == nullptr) {
-        return false;
-    }
-
-    if (WiFi.status() != WL_CONNECTED || !firebaseApp.ready()) {
-        return false;
-    }
-
-    object_t logPayload(payload);
-    databaseSend.set<object_t>(asyncClientSend, path, logPayload, logFirebaseWriteResult, "logSinkPublish");
-    return true;
 }
 
 void publishHeartbeat() {

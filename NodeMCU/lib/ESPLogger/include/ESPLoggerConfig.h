@@ -5,6 +5,6 @@
 
 constexpr size_t LOG_BUFFER_SIZE = 192;
 constexpr size_t DISCORD_BUFFER_SIZE = 300;
-constexpr size_t MAX_SINKS = 4;
+constexpr size_t MAX_SINKS = 2;
 
 #endif
