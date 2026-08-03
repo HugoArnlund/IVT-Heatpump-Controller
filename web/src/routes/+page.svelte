@@ -17,11 +17,10 @@
   // Function to initialize the page and check for valid token
   async function initializePage() {
     try {
-      login(loginError, userInfo);
+      await login(loginError, userInfo);
     } catch (err) {
       console.error("Error initializing page:", err);
-      loginError = err;
-      loading = false;
+      loginError.set(err instanceof Error ? err.message : String(err));
     } finally {
       loading = false;
     }

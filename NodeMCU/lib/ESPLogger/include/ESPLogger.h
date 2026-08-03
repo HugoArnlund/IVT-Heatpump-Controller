@@ -6,5 +6,6 @@
 #include "LogSink.h"
 #include "Logger.h"
 #include "SerialSink.h"
+#include "FirebaseSink.h"
 
 #endif

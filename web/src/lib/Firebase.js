@@ -1,5 +1,12 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth"
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  setPersistence,
+  browserLocalPersistence,
+  onAuthStateChanged,
+  signOut
+} from "firebase/auth"
 import { getDatabase, ref, set, onValue } from "firebase/database";
 import { goto } from "$app/navigation";
 
@@ -18,59 +25,96 @@ var firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app)
 
-export const login = (loginError, userInfo) => {
-  //localStorage.setItem("IVT-loginInfo", )
-  let login = JSON.parse(localStorage.getItem("IVT-loginInfo"))
+let authReady = false;
+let authReadyPromise = null;
+let authReadyResolver = null;
 
-  if(login?.email && login?.password) {    
-    signInWithEmailAndPassword(auth, login.email, login.password)
-      .then((userCredential) => {
-        // Signed in 
-        userInfo.set(userCredential.user);
-        console.log(userCredential);
-        // ...
-      })
-      .catch((error) => {
-        console.error(error)
-        loginError.set("Kunde inte logga in");
-        goto("/login");
-      });
-  } else {
-      loginError.set("Ingen inloggningsinformation sparad i localStorage");
-      goto("/login");
+const ensureAuthReady = () => {
+  if (authReady) {
+    return Promise.resolve();
   }
 
+  if (!authReadyPromise) {
+    authReadyPromise = new Promise((resolve) => {
+      authReadyResolver = resolve;
+    });
+  }
 
-}
+  return authReadyPromise;
+};
 
-const db = getDatabase(app);
+onAuthStateChanged(auth, () => {
+  authReady = true;
+  if (authReadyResolver) {
+    authReadyResolver();
+    authReadyResolver = null;
+  }
+  authReadyPromise = null;
+});
 
-const getStoredLogin = () => {
+const initializeAuthPersistence = async () => {
   if (typeof window === "undefined") {
-    return null;
+    return;
   }
 
   try {
-    const stored = localStorage.getItem("IVT-loginInfo");
-    return stored ? JSON.parse(stored) : null;
+    await setPersistence(auth, browserLocalPersistence);
   } catch (error) {
-    console.error("Failed to read stored Firebase login:", error);
-    return null;
+    console.error("Failed to enable Firebase auth persistence:", error);
   }
 };
+
+export const login = async (loginError, userInfo) => {
+  try {
+    const user = await ensureAuthenticated();
+    userInfo.set(user);
+    loginError.set(null);
+    return user;
+  } catch (error) {
+    console.error(error)
+    loginError.set("Kunde inte logga in");
+    goto("/login");
+    throw error;
+  }
+};
+
+export const loginWithEmailPassword = async (email, password) => {
+  await initializeAuthPersistence();
+  const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("IVT-loginInfo");
+  }
+
+  return userCredential.user;
+};
+
+export const logout = async () => {
+  try {
+    await signOut(auth);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("IVT-loginInfo");
+    }
+  } catch (error) {
+    console.error("Failed to sign out:", error);
+  }
+};
+
+const db = getDatabase(app);
 
 export const ensureAuthenticated = async () => {
   if (auth.currentUser) {
     return auth.currentUser;
   }
 
-  const login = getStoredLogin();
-  if (login?.email && login?.password) {
-    const userCredential = await signInWithEmailAndPassword(auth, login.email, login.password);
-    return userCredential.user;
+  await initializeAuthPersistence();
+  await ensureAuthReady();
+
+  if (auth.currentUser) {
+    return auth.currentUser;
   }
 
-  throw new Error("Ingen inloggningsinformation sparad i localStorage");
+  throw new Error("Ingen autentisering tillgänglig");
 };
 
 export const writeHeatpumpData = async (data) => {
@@ -187,6 +231,57 @@ export const listenForDeviceStatus = (callback) => {
     } catch (error) {
       console.error("Kunde inte prenumerera på enhetsstatus:", error.message);
       callback(null);
+    }
+  };
+
+  attachListener();
+
+  return () => {
+    active = false;
+    if (unsubscribe) {
+      unsubscribe();
+    }
+  };
+};
+
+export const listenForLogs = (callback) => {
+  let unsubscribe = null;
+  let active = true;
+
+  const attachListener = async () => {
+    try {
+      await ensureAuthenticated();
+      if (!active) return;
+
+      const logsRef = ref(db, "/status/logs");
+      unsubscribe = onValue(logsRef, (snapshot) => {
+        if (!active) return;
+
+        if (!snapshot.exists()) {
+          callback([]);
+          return;
+        }
+
+        const value = snapshot.val();
+        const rawLogs = value && typeof value === "object" ? value : {};
+        const entries = Object.values(rawLogs)
+          .filter((entry) => entry && typeof entry === "object")
+          .map((entry) => ({
+            ts: entry.ts ?? null,
+            lvl: entry.lvl ?? "INFO",
+            tag: entry.tag ?? "Logger",
+            msg: entry.msg ?? ""
+          }));
+
+
+        callback(entries);
+      }, (error) => {
+        console.error("Fel i logglistning:", error);
+        callback([], error.message);
+      });
+    } catch (error) {
+      console.error("Kunde inte prenumerera på loggar:", error.message);
+      callback([], error.message);
     }
   };
 

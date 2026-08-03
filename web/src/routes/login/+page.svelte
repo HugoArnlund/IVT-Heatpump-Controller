@@ -1,20 +1,30 @@
 <script>
   import { goto } from "$app/navigation";
+  import { loginWithEmailPassword } from "$lib/Firebase.js";
 
   let email = '';
   let password = '';
   let error = '';
+  let isSubmitting = false;
 
-  function handleLogin() {
+  async function handleLogin() {
     if (!email || !password) {
       error = 'Please fill in both fields.';
       return;
     }
 
-    const loginInfo = { email, password };
-    localStorage.setItem('IVT-loginInfo', JSON.stringify(loginInfo));
     error = '';
-    goto("/");
+    isSubmitting = true;
+
+    try {
+      await loginWithEmailPassword(email, password);
+      goto("/");
+    } catch (err) {
+      console.error("Login failed:", err);
+      error = err?.message || 'Kunde inte logga in. Kontrollera e-post och lösenord.';
+    } finally {
+      isSubmitting = false;
+    }
   }
 </script>
 
@@ -51,9 +61,10 @@
 
       <button
         type="submit"
-        class="w-full px-4 py-2 text-white transition bg-blue-600 rounded-md hover:bg-blue-700"
+        class="w-full px-4 py-2 text-white transition bg-blue-600 rounded-md hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+        disabled={isSubmitting}
       >
-        Login
+        {isSubmitting ? 'Logging in...' : 'Login'}
       </button>
     </form>
   </div>
